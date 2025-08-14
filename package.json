@@ -16,7 +16,7 @@
 		"react-dom": "19.1.0"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.1.4",
+		"@biomejs/biome": "2.2.0",
 		"@playwright/test": "1.54.2",
 		"@tailwindcss/postcss": "4",
 		"@testing-library/dom": "10.4.1",
@@ -36,7 +36,7 @@
 	},
 	"lint-staged": {
 		"*": [
-			"biome check --no-errors-on-unmatched --files-ignore-unknown=true"
+			"biome check --write --no-errors-on-unmatched --files-ignore-unknown=true"
 		]
 	}
 }

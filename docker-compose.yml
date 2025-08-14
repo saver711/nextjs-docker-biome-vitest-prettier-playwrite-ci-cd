@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  nextjs-app:
+    image: nextjs-app
+    container_name: nextjs-app-container
+    build:
+      context: .
+      target: dev
+    restart: always
+    command: sh -c "pnpm dev"
+    environment:
+      - APP_PORT=${APP_PORT}
+      - NODE_ENV=development
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+    volumes:
+      - .:/app
+      - ./public:/app/public
+      - node_modules:/app/node_modules
+      - next:/app/.next
+    env_file:
+      - .env
+
+volumes:
+  node_modules:
+  next:

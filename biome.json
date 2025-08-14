@@ -7,14 +7,7 @@
 	},
 	"files": {
 		"ignoreUnknown": true,
-		"includes": [
-			"**",
-			"!.next",
-			"!dist",
-			"!coverage",
-			"!playwright-report",
-			"!**/*.css"
-		]
+		"includes": ["**", "!.next", "!dist", "!coverage", "!playwright-report"]
 	},
 	"formatter": {
 		"enabled": true,
@@ -23,12 +16,16 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true
+			"recommended": true,
+			"suspicious": {
+				"noUnknownAtRules": "off"
+			}
 		},
 		"domains": {
 			"next": "recommended"
 		}
 	},
+	"css": { "formatter": { "indentStyle": "space" } },
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "double"

@@ -1,7 +1,7 @@
 # .github/workflows/branch-name-check.yml
 name: Branch Name Check
 
-on: push
+on: [push, pull_request]
 
 jobs:
   check-branch-name:

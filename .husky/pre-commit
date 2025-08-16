@@ -1,5 +1,7 @@
 lint-staged
+echo "✅📝 Linting went well!"
 vitest
+echo "✅🧪 Testing went well!"
 
 branch_name=$(git symbolic-ref --short HEAD)
 

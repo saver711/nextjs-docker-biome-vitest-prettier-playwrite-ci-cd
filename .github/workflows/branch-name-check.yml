@@ -1,0 +1,23 @@
+# .github/workflows/branch-name-check.yml
+name: Branch Name Check
+
+on: push
+
+jobs:
+  check-branch-name:
+    runs-on: ubuntu-latest
+    env:
+      BRANCH_NAME: ${{ github.ref_name }}
+
+    steps:
+      - name: Check branch name
+        run: |
+          echo "🔍 Checking branch: $BRANCH_NAME"
+
+          if [[ ! "$BRANCH_NAME" =~ ^(main|dev|[a-z]{2}-(fix|feat|chore|add)-[A-Z]+-[0-9]+-[a-z0-9-]+)$ ]]; then
+            echo "❌ Invalid branch name: '$BRANCH_NAME'"
+            echo "✅ Allowed: main, dev, or xx-type-ABC-1234-description"
+            exit 1
+          fi
+
+          echo "✅ Branch name is valid: $BRANCH_NAME"

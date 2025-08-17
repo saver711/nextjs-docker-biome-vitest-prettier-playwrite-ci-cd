@@ -1,0 +1,17 @@
+name: tsc
+
+on: [push, pull_request]
+
+jobs:
+  tsc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - name: tsc
+        run: pnpm tsc --noEmit --pretty false

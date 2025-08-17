@@ -18,11 +18,14 @@ jobs:
           version: latest
 
       - name: Setup Node
-        uses: actions/setup-node
+        uses: actions/setup-node@v4
         with:
+          node-version: lts/*
           cache: pnpm
       - name: Install deps
         run: pnpm install --frozen-lockfile
+      - name: Install Playwright Browsers
+        run: pnpm exec playwright install --with-deps
 
       - name: Run Playwrite
         run: pnpm playwright test

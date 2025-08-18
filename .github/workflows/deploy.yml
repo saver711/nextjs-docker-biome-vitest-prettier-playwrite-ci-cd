@@ -9,4 +9,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: echo "🚀 deploy here"
+      - run: echo "🚀 deploy here 1"

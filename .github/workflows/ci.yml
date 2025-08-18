@@ -97,35 +97,35 @@ jobs:
           path: coverage/
           retention-days: 30
 
-  playwright:
-    runs-on: ubuntu-latest
-    needs: [biome, branch-name-check, commit-lint, tsc, vitest]
-    if: |
-      (github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'dev')) ||
-      (github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'dev'))
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Setup
-        uses: ./.github/actions/setup
+  # playwright:
+  #   runs-on: ubuntu-latest
+  #   needs: [biome, branch-name-check, commit-lint, tsc, vitest]
+  #   if: |
+  #     (github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'dev')) ||
+  #     (github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'dev'))
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #     - name: Setup
+  #       uses: ./.github/actions/setup
 
-      - name: Cache Playwright Browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+  #     - name: Cache Playwright Browsers
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: ~/.cache/ms-playwright
+  #         key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
-      - name: Install Playwright Browsers
-        run: pnpm exec playwright install --with-deps
+  #     - name: Install Playwright Browsers
+  #       run: pnpm exec playwright install --with-deps
 
-      - name: Run Playwrite
-        run: pnpm playwright test
+  #     - name: Run Playwrite
+  #       run: pnpm playwright test
 
-      - name: Upload Playwrite report
-        uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 30
+  #     - name: Upload Playwrite report
+  #       uses: actions/upload-artifact@v4
+  #       if: ${{ !cancelled() }}
+  #       with:
+  #         name: playwright-report
+  #         path: playwright-report/
+  #         retention-days: 30

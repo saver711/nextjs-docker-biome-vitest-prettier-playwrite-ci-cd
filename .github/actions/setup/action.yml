@@ -1,4 +1,4 @@
-name: "Setup Project"
+name: "Setup"
 description: "Checkout, setup Node + pnpm, and optionally install dependencies"
 
 inputs:

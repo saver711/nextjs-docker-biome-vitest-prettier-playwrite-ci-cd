@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 Next.js + Docker + CI/CD + AWS EC2 Production Guide  
 
-## Getting Started
+This repository serves as a **comprehensive guide** for setting up a modern frontend project — from **local development** to **production deployment** on AWS EC2 using Docker and GitHub Actions.  
 
-First, run the development server:
+It’s tailored for **senior frontend developers** who want a **clean, structured, and scalable setup** with best practices baked in.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Full Documentation 👇[![N](https://img.shields.io/badge/notion-000?style=for-the-badge&logo=notion&logoColor=white)](https://www.notion.so/ahassan711/Perfect-Nextjs-app-with-tools-including-CI-CD-24d6891c5ba7808e9217e2834d0eba11)
+
+---
+
+## 🔑 Key Features  
+
+### 🛠 Development Setup  
+- **Next.js 15** with React 19  
+- **TypeScript** for type safety  
+- **TailwindCSS 4** for styling  
+- **Biome** (modern linter & formatter) replacing ESLint + Prettier  
+- **Vitest** + **Testing Library** for fast unit testing  
+- **Playwright** for end-to-end testing  
+- **Husky + Lint-Staged** for pre-commit hooks & clean git history  
+- **Commitlint** for conventional commits  
+
+### ⚙️ CI/CD with GitHub Actions  
+- ✅ Linting (Biome)  
+- ✅ Branch naming enforcement  
+- ✅ Commit message validation (Conventional Commits)  
+- ✅ Type-checking (`tsc`)  
+- ✅ Unit tests (Vitest + coverage)  
+- ✅ E2E tests (Playwright)  
+- ✅ Automated build & deployment  
+
+### 🐳 Docker & Deployment  
+- **Multi-stage Dockerfile** (builder, runner)  
+- **Nginx** as reverse proxy (optimized for Next.js)  
+- **docker-compose** for local & production setup  
+- **Automated Docker builds & push to Docker Hub**  
+- **Self-hosted GitHub runner on AWS EC2** for deployment  
+
+---
+
+## 🚦 Getting Started  
+Full Documentation 👇[![N](https://img.shields.io/badge/notion-000?style=for-the-badge&logo=notion&logoColor=white)](https://www.notion.so/ahassan711/Perfect-Nextjs-app-with-tools-including-CI-CD-24d6891c5ba7808e9217e2834d0eba11)
+
+### 1️⃣ Install dependencies  
+```sh
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2️⃣ Run dev server  
+```sh
+pnpm dev
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3️⃣ Run tests  
+```sh
+pnpm test
+pnpm playwright test
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4️⃣ Lint & format  
+```sh
+pnpm lint
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🚀 Deployment  
+Full Documentation 👇[![N](https://img.shields.io/badge/notion-000?style=for-the-badge&logo=notion&logoColor=white)](https://www.notion.so/ahassan711/Perfect-Nextjs-app-with-tools-including-CI-CD-24d6891c5ba7808e9217e2834d0eba11)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **Build & push Docker image** (automated via GitHub Actions):  
+   ```sh
+   docker build --target runner -t <your-dockerhub-user>/nextjs-app:latest .
+   docker push <your-dockerhub-user>/nextjs-app:latest
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+2. **Deploy on EC2 (self-hosted runner)**:  
+   ```sh
+   docker-compose -f docker-compose.prod.yml pull
+   docker-compose -f docker-compose.prod.yml up -d
+   ```
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🌟 Why This Repo is Valuable  
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This repo is not just a boilerplate — it’s a **battle-tested blueprint**:  
+
+| 🔹 Area              | ✅ Best Practice Applied |
+|----------------------|--------------------------|
+| Code Quality         | Biome, TypeScript, Pre-commit hooks |
+| Git Workflow         | Branch naming, Conventional commits |
+| Testing              | Vitest (unit), Playwright (E2E) |
+| CI/CD                | Full pipeline (lint → build → test → deploy) |
+| Deployment           | Docker + Nginx + AWS EC2 |
+| Scalability          | Modular setup, ready for team collaboration |
+
+> 📘 Use this as a **learning resource** or as a **starter kit** for production-grade frontend projects.  

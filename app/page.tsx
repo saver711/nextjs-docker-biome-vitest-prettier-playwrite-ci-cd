@@ -12,7 +12,7 @@ export default function Home() {
 					height={38}
 					priority
 				/>
-				<h2>Ahmed Hassan</h2>
+				<h2>Ahmed 123</h2>
 			</main>
 		</div>
 	);

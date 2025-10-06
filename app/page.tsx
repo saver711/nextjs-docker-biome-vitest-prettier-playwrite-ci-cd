@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
 	return (
@@ -12,7 +13,9 @@ export default function Home() {
 					height={38}
 					priority
 				/>
-				<h2>Ahmed</h2>
+				<Link href="/docs" className="text-blue-600">
+					Documentation
+				</Link>
 			</main>
 		</div>
 	);

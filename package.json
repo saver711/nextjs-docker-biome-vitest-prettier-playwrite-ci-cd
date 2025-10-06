@@ -11,6 +11,10 @@
 		"test": "vitest run --coverage"
 	},
 	"dependencies": {
+		"@types/mdx": "2.0.13",
+		"fumadocs-core": "15.8.3",
+		"fumadocs-mdx": "12.0.2",
+		"fumadocs-ui": "15.8.3",
 		"next": "15.4.6",
 		"react": "19.1.0",
 		"react-dom": "19.1.0"

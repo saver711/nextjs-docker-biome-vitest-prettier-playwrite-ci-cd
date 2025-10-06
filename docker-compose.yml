@@ -15,8 +15,16 @@ services:
     ports:
       - "${APP_PORT}:${APP_PORT}"
     volumes:
-      - .:/app
+      # ✅ only mount relevant directories
+      - ./app:/app/app
+      - ./components:/app/components 
+      - ./content:/app/content
+      - ./lib:/app/lib
       - ./public:/app/public
+      - ./mdx-components.tsx:/app/mdx-components.tsx
+      - ./next.config.mjs:/app/next.config.mjs
+      - ./source.config.mjs:/app/source.config.mjs
+      # ✅ preserve installed deps & build
       - node_modules:/app/node_modules
       - next:/app/.next
     env_file:

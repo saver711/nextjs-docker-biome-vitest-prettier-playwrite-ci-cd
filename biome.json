@@ -7,7 +7,14 @@
 	},
 	"files": {
 		"ignoreUnknown": true,
-		"includes": ["**", "!.next", "!dist", "!coverage", "!playwright-report"]
+		"includes": [
+			"**",
+			"!.next",
+			"!dist",
+			"!coverage",
+			"!playwright-report",
+			"!.source"
+		]
 	},
 	"formatter": {
 		"enabled": true,

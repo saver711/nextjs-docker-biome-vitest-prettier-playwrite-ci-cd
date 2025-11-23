@@ -1301,12 +1301,535 @@ You can explore the live demo or check the code below:
 
 ## URL Params Synchronization
 
-Stay tuned
+Synchronizing table state (like sorting, pagination, and filtering) with URL parameters ensures a shareable, bookmarkable, and persistent user experience. For example, a user can copy the URL with `?sort=createdAt:desc` and share it to preserve the table’s state. We’ll use the `nuqs` library for type-safe, lightweight query state management in Next.js.
+
+In this section, we’ll implement sorting synchronization using `nuqs`. Filtering and pagination synchronization will follow similar patterns, which we’ll cover later.
+
+---
+
+### Setup
+
+First, ensure `nuqs` is installed:
+
+```npm
+npm i nuqs
+```
+
+Wrap your Next.js app with `NuqsAdapter` in the root layout to enable query state management:
+
+```tsx title="app/layout.tsx"
+import { NuqsAdapter } from "nuqs/adapters/next/app"
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    ...
+        <NuqsAdapter>{children}</NuqsAdapter>
+    ...
+  )
+}
+```
+
+---
+
+### Sorting with URL Params
+
+We’ll refactor the `DataTable` component to receive `sorting` and `setSorting` as props, removing its internal state. Then, we’ll use a custom hook (`useTableSorting`) to manage sorting state via URL parameters.
+
+#### Step 1: Update DataTable Component
+
+Remove the local sorting state and add `sorting` and `setSorting` props to `DataTable`. This makes the component reusable and controlled by its parent.
+
+```tsx title="app/components/ui/table/data-table.tsx"
+"use client"
+
+import {
+  type ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable
+} from "@tanstack/react-table"
+import { type Dispatch, type SetStateAction, useEffect, useState } from "react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table"
+import { TablePagination } from "./table-pagination"
+
+interface DataTableProps<TData, TValue> {
+  columns: ColumnDef<TData, TValue>[]
+  data: TData[]
+  onRowSelectionChange?: (selectedRows: TData[]) => void
+  rowId: keyof TData
+  sorting: SortingState
+  setSorting: Dispatch<SetStateAction<SortingState>>
+}
+
+export const DataTable = <TData, TValue>({
+  columns,
+  data,
+  onRowSelectionChange,
+  rowId,
+  sorting,
+  setSorting
+}: DataTableProps<TData, TValue>) => {
+  const [rowSelection, setRowSelection] = useState({})
+
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    onSortingChange: setSorting,
+    getPaginationRowModel: getPaginationRowModel(),
+    onRowSelectionChange: setRowSelection,
+    state: {
+      sorting,
+      rowSelection
+    },
+    getRowId: row => String(row[rowId])
+  })
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Iam depending on rowSelection
+  useEffect(() => {
+    if (onRowSelectionChange) {
+      const selectedRows = table
+        .getSelectedRowModel()
+        .rows.map(row => row.original)
+      onRowSelectionChange(selectedRows)
+    }
+  }, [rowSelection, table, onRowSelectionChange])
+
+  const selectedRowsCount = table.getFilteredSelectedRowModel().rows.length
+  const rowsCount = table.getFilteredRowModel().rows.length
+
+  return (
+    <div>
+      <div className="overflow-hidden rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map(headerGroup => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map(header => {
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  )
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map(row => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map(cell => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+      <div className="flex justify-between items-center py-2">
+        <div className="text-muted-foreground flex-1 text-sm">
+          {selectedRowsCount} of {rowsCount} row(s) selected.
+        </div>
+
+        <TablePagination table={table} />
+      </div>
+    </div>
+  )
+}
+```
+
+#### Step 2: Create Sorting Hook and Utilities
+
+Create a custom hook to manage sorting state in the URL, along with utilities for parsing and serializing the sorting state.
+
+```tsx title="app/components/ui/table/utils/sort-parser.util.ts"
+"use client"
+
+import type { SortingState } from "@tanstack/react-table"
+import { createParser } from "nuqs"
+
+export const sortParser = createParser<SortingState>({
+  // FROM URL TO STATE
+  // e.g., "createdAt:asc,name:desc" => [{ id: "createdAt", desc: false }, { id: "name", desc: true }]
+  parse(queryValue: string) {
+    if (!queryValue) return []
+    return queryValue.split(",").map(pair => {
+      const [id, dir] = pair.split(":")
+      return { id, desc: dir === "desc" }
+    })
+  },
+  // FROM STATE TO URL
+  // e.g., [{ id: "createdAt", desc: false }, { id: "name", desc: true }] => "createdAt:asc,name:desc"
+  serialize(value: SortingState): string {
+    if (!value || value.length === 0) return ""
+    return value.map(s => `${s.id}:${s.desc ? "desc" : "asc"}`).join(",")
+  },
+  // Optional: Compare sorting states for equality
+  eq(a: SortingState, b: SortingState): boolean {
+    if (a.length !== b.length) return false
+    return a.every((s, i) => {
+      const t = b[i]
+      return s.id === t.id && s.desc === t.desc
+    })
+  }
+})
+```
+
+```tsx title="app/components/ui/table/hooks/use-table-url-state.ts"
+"use client"
+
+import { parseAsInteger, useQueryStates } from "nuqs"
+import { DEFAULT_TABLE_PAGE_VALUE } from "@/app/components/ui/table/consts/default-table-page-value.const"
+import { DEFAULT_TABLE_PER_PAGE_VALUE } from "@/app/components/ui/table/consts/default-table-per-page-value.const"
+import { sortParser } from "@/app/components/ui/table/utils/sort-parser.util"
+
+const tableUrlStateSchema = ({ sortParamName = "sort" }) => ({
+  page: parseAsInteger.withDefault(DEFAULT_TABLE_PAGE_VALUE),
+  pageSize: parseAsInteger.withDefault(DEFAULT_TABLE_PER_PAGE_VALUE),
+  [sortParamName]: sortParser.withDefault([])
+})
+
+/** nuqs Hook for common table url states (page, perPage, sort) */
+export const useTableUrlState = ({ sortParamName = "sort" }) =>
+  useQueryStates(
+    tableUrlStateSchema({
+      sortParamName
+    }),
+    {
+      history: "replace"
+    }
+  )
+```
+
+```tsx title="app/components/ui/table/hooks/use-table-sorting.ts"
+"use client"
+
+import type { SortingState, Updater } from "@tanstack/react-table"
+import { useTableUrlState } from "./use-table-url-state"
+
+/** nuqs Hook for managing table sorting state via URL parameters */
+// sortParamName: the name of the URL parameter to use for sorting (default: "sort") - Because multiple tables may exist on the same page
+export const useTableSorting = (sortParamName = "sort") => {
+  const [urlState, setUrlState] = useTableUrlState(sortParamName)
+  const sorting = urlState[sortParamName] as SortingState
+
+  const setSorting = (updater: Updater<SortingState>) => {
+    const newSorting =
+      typeof updater === "function" ? updater(sorting) : updater
+    setUrlState({ [sortParamName]: newSorting })
+  }
+
+  return { sorting, setSorting }
+}
+```
+
+#### Step 3: Update BloggersTable Component
+
+Refactor `BloggersTable` to use the `useTableSorting` hook for sorting state and `useBloggersDeletion` for managing filtered data and deletions. This keeps the component clean and delegates state management to hooks.
+
+```tsx title="app/bloggers/components/bloggers-table.tsx"
+"use client"
+
+import { Trash2 } from "lucide-react"
+import { DataTable } from "@/app/components/ui/table/data-table"
+import { useTableSorting } from "@/app/components/ui/table/hooks/use-table-sorting"
+import { Button } from "@/components/ui/button"
+import { useBloggersDeletion } from "../hooks/use-bloggers-deletion"
+import type { Blogger } from "../models/blogger.model"
+import { getBloggersTableColumns } from "../utils/get-bloggers-table-columns.util"
+import { BloggersFilterBar } from "./bloggers-filter-bar"
+
+interface BloggersTableProps {
+  data: Blogger[]
+}
+
+export const BloggersTable = ({ data }: BloggersTableProps) => {
+  const { sorting, setSorting } = useTableSorting()
+  const {
+    filteredData,
+    setFilteredData,
+    selectedBloggers,
+    setSelectedBloggers,
+    handleDelete,
+    handleBulkDelete
+  } = useBloggersDeletion(data)
+  const columns = getBloggersTableColumns({ onDelete: handleDelete })
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <BloggersFilterBar data={data} onFilter={setFilteredData} />
+        {selectedBloggers.length > 0 && (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleBulkDelete}
+            className="flex items-center gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete Selected
+          </Button>
+        )}
+      </div>
+      <DataTable
+        columns={columns}
+        data={filteredData}
+        onRowSelectionChange={setSelectedBloggers}
+        rowId="id"
+        sorting={sorting}
+        setSorting={setSorting}
+      />
+    </div>
+  )
+}
+```
+
+#### Step 4: Reuse Existing Deletion Hook
+
+The `useBloggersDeletion` hook already manages filtered data and deletion logic, so we reuse it here without changes.
+
+```tsx title="app/bloggers/hooks/use-bloggers-deletion.ts"
+"use client"
+
+import { useState } from "react"
+import type { Blogger } from "../models/blogger.model"
+
+export const useBloggersDeletion = (data: Blogger[]) => {
+  const [filteredData, setFilteredData] = useState(data)
+  const [selectedBloggers, setSelectedBloggers] = useState<Blogger[]>([])
+
+  const handleDelete = (id: string) =>
+    setFilteredData(prev => prev.filter(b => b.id !== id))
+
+  const handleBulkDelete = () => {
+    const selectedIds = selectedBloggers.map(b => b.id)
+    setFilteredData(prev => prev.filter(b => !selectedIds.includes(b.id)))
+    setSelectedBloggers([])
+  }
+
+  return {
+    filteredData,
+    setFilteredData,
+    selectedBloggers,
+    setSelectedBloggers,
+    handleDelete,
+    handleBulkDelete
+  }
+}
+```
+
+---
+
+## Pagination with URL Params
+
+Synchronizing pagination state (page index and page size) with URL parameters allows users to share or bookmark specific table views (e.g., `?page=2&pageSize=10`). We’ll use `nuqs` to manage pagination state in the URL, building on the existing sorting implementation.
+
+---
+
+### Pagination Implementation
+
+We’ll extend the `DataTable` component to receive `pagination` and `setPagination` props, removing its internal pagination logic. A new `useTablePagination` hook will manage pagination state via URL parameters, and we’ll update the pagination component to handle dynamic page size options.
+
+#### Step 1: Update DataTable Component
+
+Add pagination props and integrate them into the `useReactTable` hook.
+
+```tsx title="app/components/ui/table/data-table.tsx"
+import type { PaginationState } from "@tanstack/react-table"
+
+// Add to DataTableProps interface
+setPagination: (updater: SetStateAction<PaginationState>) => void;
+pagination: PaginationState;
+
+// In useReactTable hook, add:
+onPaginationChange: setPagination,
+state: {
+  ...
+  pagination: pagination,
+},
+```
+
+#### Step 2: Update BloggersTable Component
+
+Use the `useTablePagination` hook to manage pagination state and pass it to `DataTable`.
+
+```tsx title="app/bloggers/components/bloggers-table.tsx"
+import { useTablePagination } from "@/app/components/ui/table/hooks/use-table-pagination"
+
+const { pagination, setPagination } = useTablePagination();
+
+<DataTable
+  ...
+  pagination={pagination}
+  setPagination={setPagination}
+/>
+```
+
+#### Step 3: Update TablePagination Component
+
+Modify the pagination component to use dynamic page size options, ensuring the current page size from the URL is included.
+
+```tsx title="app/components/ui/table/table-pagination.tsx"
+import { getRowsPerPageOptions } from "./utils/get-rows-per-page-options"
+
+...
+const perPageOptions = getRowsPerPageOptions(pageSize)
+...
+```
+
+#### Step 4: Add Pagination Utilities
+
+Create utilities to handle page size options and parse page numbers.
+
+```tsx title="app/components/ui/table/utils/get-rows-per-page-options.ts"
+import { DEFAULT_TABLE_PER_PAGE_OPTIONS } from "../consts/default-table-per-page-options.const"
+
+// This function ensures that the current page size coming from the URL is always included
+export const getRowsPerPageOptions = (extraPageSize: number) => {
+  return DEFAULT_TABLE_PER_PAGE_OPTIONS.includes(extraPageSize)
+    ? DEFAULT_TABLE_PER_PAGE_OPTIONS
+    : [...DEFAULT_TABLE_PER_PAGE_OPTIONS, extraPageSize].sort((a, b) => a - b)
+}
+```
+
+```tsx title="app/components/ui/table/consts/default-table-page-index-value.const.ts"
+export const DEFAULT_TABLE_PAGE_INDEX_VALUE = 0
+```
+
+```tsx title="app/components/ui/table/utils/page-parser.util.ts"
+import { createParser } from "nuqs"
+
+/**
+ * Parser for page numbers in table pagination.
+ * Maps pageIndex 0 to page number 1 and vice versa.
+ */
+export const pageParser = createParser<number>({
+  // FROM URL TO STATE
+  parse: (queryValue: string) => {
+    const pageNumber = parseInt(queryValue, 10)
+    return Number.isNaN(pageNumber) || pageNumber < 1 ? 0 : pageNumber - 1
+  },
+  // FROM STATE TO URL
+  serialize: (value: number): string => {
+    return (value + 1).toString()
+  },
+  // eq is optional but recommended for comparing default state
+  eq: (a: number, b: number): boolean => a === b
+})
+```
+
+#### Step 5: Update Table URL State Hook
+
+Update the `useTableUrlState` hook to support pagination parameters and allow customizable param names.
+
+```tsx title="app/components/ui/table/hooks/use-table-url-state.ts"
+"use client"
+
+import { parseAsInteger, useQueryStates } from "nuqs"
+import { DEFAULT_TABLE_PAGE_INDEX_VALUE } from "@/app/components/ui/table/consts/default-table-page-index-value.const"
+import { DEFAULT_TABLE_PER_PAGE_VALUE } from "@/app/components/ui/table/consts/default-table-per-page-value.const"
+import { sortParser } from "@/app/components/ui/table/utils/sort-parser.util"
+import { pageParser } from "../utils/page-parser.util"
+
+const tableUrlStateSchema = ({
+  sortParamName = "sort",
+  pageParamName = "page",
+  pageSizeParamName = "pageSize"
+}) => ({
+  [pageParamName]: pageParser.withDefault(DEFAULT_TABLE_PAGE_INDEX_VALUE),
+  [pageSizeParamName]: parseAsInteger.withDefault(DEFAULT_TABLE_PER_PAGE_VALUE),
+  [sortParamName]: sortParser.withDefault([])
+})
+
+/** nuqs Hook for common table url states (page, perPage, sort) */
+export const useTableUrlState = ({
+  sortParamName = "sort",
+  pageParamName = "page",
+  pageSizeParamName = "pageSize"
+}) =>
+  useQueryStates(
+    tableUrlStateSchema({
+      sortParamName,
+      pageParamName,
+      pageSizeParamName
+    }),
+    {
+      history: "replace"
+    }
+  )
+```
+
+#### Step 6: Add Pagination Hook
+
+Create a hook to manage pagination state via URL parameters.
+
+```tsx title="app/components/ui/table/hooks/use-table-pagination.ts"
+"use client"
+
+import type { PaginationState, Updater } from "@tanstack/react-table"
+import { useTableUrlState } from "./use-table-url-state"
+
+/** nuqs Hook for managing table pagination state via URL parameters */
+export const useTablePagination = (page = "page", pageSize = "pageSize") => {
+  const [urlState, setUrlState] = useTableUrlState({
+    pageParamName: page,
+    pageSizeParamName: pageSize
+  })
+  const pagination = {
+    pageIndex: urlState[page],
+    pageSize: urlState[pageSize]
+  } as PaginationState
+
+  const setPagination = (updater: Updater<PaginationState>) => {
+    const newPagination =
+      typeof updater === "function" ? updater(pagination) : updater
+    setUrlState({
+      [page]: newPagination.pageIndex,
+      [pageSize]: newPagination.pageSize
+    })
+  }
+
+  return { pagination, setPagination }
+}
+```
+
+---
 
 ## Next Step:
 
 [Server-side data table](/docs/components/table/server-data)
-
-```
-
-```
